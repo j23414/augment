@@ -8,6 +8,9 @@ params.metadata = false
 params.metadata_id_columns = "accession"
 params.metadata_annotate = "date region country host is_lab_host"
 
+// Enable adding georesolution
+params.export_params = "" // "--geo-resolutions country"
+
 process REFINE {
     conda "${params.conda_env}"
     publishDir "${params.outdir}/refine", mode: "copy"
@@ -42,7 +45,7 @@ process EXPORT {
 process EXPORT_METADATA {
     conda "${params.conda_env}"
     publishDir "${params.outdir}/export", mode: "copy"
-    input: tuple path(newick), path(node_data), path(metadata), val(metadata_id_columns), val(metadata_columns)
+    input: tuple path(newick), path(node_data), path(metadata), val(metadata_id_columns), val(metadata_columns), val(export_params)
     output: path("${newick.baseName}.json")
 
     script:
@@ -51,6 +54,7 @@ process EXPORT_METADATA {
     --tree ${newick} \
     --node-data ${node_data} \
     --output ${newick.baseName}.json \
+    ${export_params} \
     --metadata ${metadata} \
     --metadata-id-columns ${metadata_id_columns} \
     --metadata-columns ${metadata_columns} \
@@ -72,6 +76,7 @@ workflow {
         | combine(ch_metadata)
         | combine(channel.from("${params.metadata_id_columns}"))
         | combine(channel.from("${params.metadata_annotate}"))
+        | combine(channel.from("${params.export_params}"))
         | EXPORT_METADATA
         | view
     } else {
