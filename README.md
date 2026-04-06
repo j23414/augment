@@ -1,70 +1,40 @@
-# nextflow-lsf-tiny
-Tiny test of nextflow + LSF
+# Augment
 
-Reuse St Jude executor config: https://nf-co.re/configs/stjude/
+Augment an existing analysis 
 
-**Local Run**
+Tree -> Auspice website
 
-```bash
-nextflow run main.nf \
-  --infiles "data/*.txt" \
-  -with-timeline timeline.html
-```
-
-Which prints out:
-
-```bash
-
- N E X T F L O W   ~  version 25.10.4
-
-Launching `main.nf` [berserk_snyder] DSL2 - revision: fefaf60a91
-
-executor >  local (6)
-[4b/e68756] ADD_GREETING (1) [100%] 3 of 3 ✔
-[33/8d96f7] ADD_FAREWELL (3) [100%] 3 of 3 ✔
-/Users/jchang99/github/j23414/nextflow-lsf-tiny/work/5a/9dbdfba1fd007483db24b43b3ee9e1/bob_greeting_letter.txt
-/Users/jchang99/github/j23414/nextflow-lsf-tiny/work/15/07950d05821bdca2e3e6937b968ff1/charlie_greeting_letter.txt
-/Users/jchang99/github/j23414/nextflow-lsf-tiny/work/33/8d96f76ff693ea486760bf1820af0b/alice_greeting_letter.txt
-
-Completed at: 11-Mar-2026 11:20:17
-Duration    : 2m 31s
-CPU hours   : 0.1
-Succeeded   : 6
-```
-
-**timeline.html**
-
-![timeline](imgs/timeline.png)
-
-**Pull from GitHub and Run**
-
-```bash
-mkdir data
-echo "alice" > data/alice.txt
-echo "bob" > data/bob.txt
-echo "charlie" > data/charlie.txt
-
-nextflow run j23414/nextflow-lsf-tiny \
-  -r main \
-  --infiles "data/*.txt" \
-  -with-timeline timeline.html
-```
-
-**LSF HPC Run**
+## Minimal Run
 
 ```bash
 nextflow run main.nf \
-  --infiles "data/*.txt" \
-  -with-timeline timeline_hpc.html \
-  -config stjude.config
+  --newick "path/to/tree.nwk" \
+  --conda_env "path/to/nextstrain/conda/env
+
+nextstrain view results/export
 ```
 
-Or submit to LSF with
+## Add Metadata
 
 ```bash
-bsub < submit_job.lsf
+nextflow run main.nf \
+  --newick "path/to/tree.nwk \
+  --conda_env "path/to/nextstrain/conda/env" \
+  --metadata "path/to/metadata.tsv" \
+  --metadata_id_columns "accession" \
+  --metadata_annotate "date region country host is_lab_host"
 ```
 
-**timeline_hpc.html**
+<!--
 
-![timeline](imgs/timeline_hpc.png)
+**Local Testing
+
+```bash
+nextflow run main.nf \
+  --newick /Users/jchang99/github/nextstrain/astravirus/phylogenetic/results/tree_raw.nwk \
+  --metadata /Users/jchang99/github/nextstrain/astravirus/phylogenetic/results/metadata.tsv \
+  -resume \
+  --export_params "--geo-resolutions region country"
+```
+
+-->
