@@ -25,16 +25,30 @@ nextflow run main.nf \
   --metadata_annotate "date region country host is_lab_host"
 ```
 
+## Add Gene Annotations (nucleotide and amino acid mutations)
+
+```bash
+nextflow run main.nf \
+  --newick "path/to/tree.nwk \
+  --conda_env "path/to/nextstrain/conda/env" \
+  --alignment "path/to/alignment.fasta" \
+  --reference_gb "path/to/reference.gb" \
+  --reference_fasta "path/to/reference.fasta"
+```
+
 <!--
 
 **Local Testing
 
 ```bash
 nextflow run main.nf \
-  --newick /Users/jchang99/github/nextstrain/astravirus/phylogenetic/results/tree_raw.nwk \
-  --metadata /Users/jchang99/github/nextstrain/astravirus/phylogenetic/results/metadata.tsv \
+  --newick phylo/results/tree_raw.nwk \
+  --metadata phylo/results/metadata.tsv \
   -resume \
-  --export_params "--geo-resolutions region country"
+  --export_params "--geo-resolutions region country" \
+  --alignment phylo/results/aligned.fasta \
+  --reference_gb phylo/defaults/reference.gb \
+  --reference_fasta phylo/defaults/reference.fasta
 ```
 
 -->

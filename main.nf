@@ -11,6 +11,11 @@ params.metadata_annotate = "date region country host is_lab_host"
 // Enable adding georesolution
 params.export_params = "" // "--geo-resolutions country"
 
+// Add gene annotations
+params.alignment = false
+params.reference_gb = false
+params.reference_fasta = false
+
 process REFINE {
     conda "${params.conda_env}"
     publishDir "${params.outdir}/refine", mode: "copy"
@@ -24,6 +29,38 @@ process REFINE {
     --output-tree ${newick.baseName}_refined.nwk \
     --output-node-data ${newick.baseName}_branch_length.json \
     --keep-root
+    """
+}
+
+process ANCESTRAL {
+    conda "${params.conda_env}"
+    publishDir "${params.outdir}/ancestral", mode: "copy"
+    input: tuple path(newick), path(alignment), path(reference_fasta)
+    output: path("${newick.baseName}_nt-muts.json")
+
+    script:
+    """
+    augur ancestral \
+    --tree ${newick} \
+    --alignment ${alignment} \
+    --root-sequence ${reference_fasta} \
+    --output-node-data ${newick.baseName}_nt-muts.json
+    """
+}
+
+process TRANSLATE {
+    conda "${params.conda_env}"
+    publishDir "${params.outdir}/translate", mode: "copy"
+    input: tuple path(newick), path(nt_muts_json), path(reference_gb)
+    output: path("${newick.baseName}_aa-muts.json")
+
+    script:
+    """
+    augur translate \
+    --tree ${newick} \
+    --ancestral-sequences ${nt_muts_json} \
+    --reference-sequence ${reference_gb} \
+    --output-node-data ${newick.baseName}_aa-muts.json
     """
 }
 
@@ -69,10 +106,41 @@ workflow {
     ch_newick
     | REFINE
 
+    ch_tree = REFINE.out.map{ it[0] }
+
+    if(params.alignment && params.reference_gb && params.reference_fasta){
+        ch_alignment = channel.fromPath(params.alignment)
+        ch_reference_fasta = channel.fromPath(params.reference_fasta)
+        ch_reference_gb = channel.fromPath(params.reference_gb)
+
+        ch_tree 
+        | combine(ch_alignment)
+        | combine(ch_reference_fasta)
+        | ANCESTRAL
+
+        ch_tree
+        | combine(ANCESTRAL.out)
+        | combine(ch_reference_gb)
+        | TRANSLATE
+
+        ch_node_data = REFINE.out.map{ it[1] }
+        | combine(ANCESTRAL.out)
+        | combine(TRANSLATE.out)
+        | map{n -> [n]}
+    } else {
+        ch_node_data = REFINE.out.map{ it[1] }
+    }
+
+    // ch_tree
+    // | combine(ch_node_data)
+    // | view
+
     // Metadata exists
     if(params.metadata){
         ch_metadata = channel.fromPath(params.metadata)
-        REFINE.out
+
+        ch_tree
+        | combine(ch_node_data)
         | combine(ch_metadata)
         | combine(channel.from("${params.metadata_id_columns}"))
         | combine(channel.from("${params.metadata_annotate}"))
@@ -80,7 +148,8 @@ workflow {
         | EXPORT_METADATA
         | view
     } else {
-        REFINE.out
+        ch_tree
+        | combine(ch_node_data)
         | EXPORT
         | view
     }
