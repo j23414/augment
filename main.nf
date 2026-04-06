@@ -1,38 +1,44 @@
-params.infiles = "*.txt"
+params.newick = "tree.nwk"
 params.outdir = "results"
+params.conda_env = "/Users/jchang99/.nextstrain/runtimes/conda/env/"
 
-process ADD_GREETING {
-    publishDir "${params.outdir}/debug", mode: "copy"
-    input: path(infile)
-    output: path("${infile.baseName}_greeting.txt")
+process REFINE {
+    conda "${params.conda_env}"
+    publishDir "${params.outdir}/refine", mode: "copy"
+    input: path(newick)
+    output: tuple path("${newick.baseName}_refined.nwk"), path("${newick.baseName}_branch_length.json")
 
     script:
     """
-    echo "Hello," > "${infile.baseName}_greeting.txt"
-    sleep 100
-    cat ${infile} >> "${infile.baseName}_greeting.txt"
+    augur refine \
+    --tree ${newick} \
+    --output-tree ${newick.baseName}_refined.nwk \
+    --output-node-data ${newick.baseName}_branch_length.json \
+    --keep-root
     """
 }
 
-process ADD_FAREWELL {
-    publishDir "${params.outdir}/", mode: "copy"
-    input: path(infile)
-    output: path("${infile.baseName}_letter.txt")
+process EXPORT {
+    conda "${params.conda_env}"
+    publishDir "${params.outdir}/export", mode: "copy"
+    input: tuple path(newick), path(node_data)
+    output: path("${newick.baseName}.json")
 
     script:
     """
-    cat ${infile} >> "${infile.baseName}_letter.txt"
-    sleep 50
-    echo "Goodbye!" > "${infile.baseName}_letter.txt"
+    augur export v2 \
+    --tree ${newick} \
+    --node-data ${node_data} \
+    --output ${newick.baseName}.json
     """
 }
 
 workflow {
     main:
-    ch_infiles = channel.fromPath(params.infiles)
+    ch_newick = channel.fromPath(params.newick)
 
-    ch_infiles
-    | ADD_GREETING
-    | ADD_FAREWELL
+    ch_newick
+    | REFINE
+    | EXPORT
     | view
 }
