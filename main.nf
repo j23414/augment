@@ -1,7 +1,7 @@
 // Minimal
 params.newick = "tree.nwk"
 params.outdir = "results"
-params.conda_env = "/Users/jchang99/.nextstrain/runtimes/conda/env/"
+params.conda_env = "${HOME}/.nextstrain/runtimes/conda/env/"
 
 // Add Metadata
 params.metadata = false
