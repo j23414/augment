@@ -36,19 +36,16 @@ nextflow run main.nf \
   --reference_fasta "path/to/reference.fasta"
 ```
 
-<!--
 
-**Local Testing
+**Local Testing**
 
 ```bash
 nextflow run main.nf \
   --newick phylo/results/tree_raw.nwk \
   --metadata phylo/results/metadata.tsv \
-  -resume \
   --export_params "--geo-resolutions region country" \
   --alignment phylo/results/aligned.fasta \
   --reference_gb phylo/defaults/reference.gb \
-  --reference_fasta phylo/defaults/reference.fasta
+  --reference_fasta phylo/defaults/reference.fasta \
+    -resume \
 ```
-
--->
