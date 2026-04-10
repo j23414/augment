@@ -4,6 +4,18 @@ Augment an existing analysis
 
 Tree -> Auspice website
 
+## Install Nextstrain cli on MacOS
+
+Currently requires Nextstrain-cli installed within a conda environment
+
+```bash
+# Install Nextstrain CLI
+curl -fsSL --proto '=https' https://nextstrain.org/cli/installer/mac | bash
+
+# Set conda environment runtime
+nextstrain setup --set-default conda
+```
+
 ## Minimal Run
 
 ```bash
