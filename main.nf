@@ -131,10 +131,6 @@ workflow {
         ch_node_data = REFINE.out.map{ it[1] }
     }
 
-    // ch_tree
-    // | combine(ch_node_data)
-    // | view
-
     // Metadata exists
     if(params.metadata){
         ch_metadata = channel.fromPath(params.metadata)
