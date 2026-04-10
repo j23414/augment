@@ -19,7 +19,7 @@ nextstrain setup --set-default conda
 ## Minimal Run
 
 ```bash
-nextflow run main.nf \
+nextflow run j23414/augment \
   --newick "path/to/tree.nwk" \
   --conda_env "path/to/nextstrain/conda/env
 
@@ -29,7 +29,7 @@ nextstrain view results/export
 ## Add Metadata
 
 ```bash
-nextflow run main.nf \
+nextflow run j23414/augment \
   --newick "path/to/tree.nwk \
   --conda_env "path/to/nextstrain/conda/env" \
   --metadata "path/to/metadata.tsv" \
@@ -40,7 +40,7 @@ nextflow run main.nf \
 ## Add Gene Annotations (nucleotide and amino acid mutations)
 
 ```bash
-nextflow run main.nf \
+nextflow run j23414/augment \
   --newick "path/to/tree.nwk \
   --conda_env "path/to/nextstrain/conda/env" \
   --alignment "path/to/alignment.fasta" \
@@ -49,10 +49,10 @@ nextflow run main.nf \
 ```
 
 
-**Local Testing**
+## Local Testing
 
 ```bash
-nextflow run main.nf \
+nextflow run j23414/augment \
   --newick phylo/results/tree_raw.nwk \
   --metadata phylo/results/metadata.tsv \
   --export_params "--geo-resolutions region country" \
