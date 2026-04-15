@@ -8,6 +8,9 @@ params.metadata = false
 params.metadata_id_columns = "accession"
 params.metadata_annotate = "date region country host is_lab_host"
 
+// Enables rerooting
+params.refine_params = "--keep-root"
+
 // Enable adding georesolution
 params.export_params = "" // "--geo-resolutions country"
 
@@ -19,16 +22,16 @@ params.reference_fasta = false
 process REFINE {
     conda "${params.conda_env}"
     publishDir "${params.outdir}/refine", mode: "copy"
-    input: path(newick)
+    input: tuple path(newick), val(refine_params)
     output: tuple path("${newick.baseName}_refined.nwk"), path("${newick.baseName}_branch_length.json")
 
     script:
     """
     augur refine \
     --tree ${newick} \
+    ${refine_params} \
     --output-tree ${newick.baseName}_refined.nwk \
-    --output-node-data ${newick.baseName}_branch_length.json \
-    --keep-root
+    --output-node-data ${newick.baseName}_branch_length.json
     """
 }
 
@@ -104,6 +107,7 @@ workflow {
     ch_newick = channel.fromPath(params.newick)
 
     ch_newick
+    | combine(channel.from("${params.refine_params}"))
     | REFINE
 
     ch_tree = REFINE.out.map{ it[0] }
