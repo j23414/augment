@@ -35,6 +35,24 @@ process REFINE {
     """
 }
 
+process REFINE_METADATA {
+    conda "${params.conda_env}"
+    publishDir "${params.outdir}/refine", mode: "copy"
+    input: tuple path(newick), val(refine_params), path(metadata), path(alignment)
+    output: tuple path("${newick.baseName}_refined.nwk"), path("${newick.baseName}_branch_length.json")
+
+    script:
+    """
+    augur refine \
+    --tree ${newick} \
+    --metadata ${metadata} \
+    --alignment ${alignment} \
+    ${refine_params} \
+    --output-tree ${newick.baseName}_refined.nwk \
+    --output-node-data ${newick.baseName}_branch_length.json
+    """
+}
+
 process ANCESTRAL {
     conda "${params.conda_env}"
     publishDir "${params.outdir}/ancestral", mode: "copy"
@@ -106,14 +124,35 @@ workflow {
     main:
     ch_newick = channel.fromPath(params.newick)
 
-    ch_newick
-    | combine(channel.from("${params.refine_params}"))
-    | REFINE
+    if(params.metadata){
+        ch_metadata = channel.fromPath(params.metadata)
+    }
 
-    ch_tree = REFINE.out.map{ it[0] }
+    if(params.alignment){
+        ch_alignment = channel.fromPath(params.alignment)
+    }
+
+    if(params.metadata && params.alignment ) {
+      ch_newick
+      | combine(channel.from("${params.refine_params}"))
+      | combine(ch_metadata)
+      | combine(ch_alignment)
+      | REFINE_METADATA
+
+      ch_tree = REFINE_METADATA.out.map{ it[0] }
+      ch_branch_length = REFINE_METADATA.out.map{ it[1] }
+
+    } else {
+      ch_newick
+      | combine(channel.from("${params.refine_params}"))
+      | REFINE
+
+      ch_tree = REFINE.out.map{ it[0] }
+      ch_branch_length = REFINE.out.map{ it[1] }
+    }
+
 
     if(params.alignment && params.reference_gb && params.reference_fasta){
-        ch_alignment = channel.fromPath(params.alignment)
         ch_reference_fasta = channel.fromPath(params.reference_fasta)
         ch_reference_gb = channel.fromPath(params.reference_gb)
 
@@ -127,18 +166,16 @@ workflow {
         | combine(ch_reference_gb)
         | TRANSLATE
 
-        ch_node_data = REFINE.out.map{ it[1] }
+        ch_node_data = ch_branch_length
         | combine(ANCESTRAL.out)
         | combine(TRANSLATE.out)
         | map{n -> [n]}
     } else {
-        ch_node_data = REFINE.out.map{ it[1] }
+        ch_node_data = ch_branch_length
     }
 
     // Metadata exists
     if(params.metadata){
-        ch_metadata = channel.fromPath(params.metadata)
-
         ch_tree
         | combine(ch_node_data)
         | combine(ch_metadata)
