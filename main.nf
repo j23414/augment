@@ -8,6 +8,9 @@ params.metadata = false
 params.metadata_id_columns = "accession"
 params.metadata_annotate = "date region country host is_lab_host"
 
+// Set Colors
+params.metadata_color_order = false
+
 // Enables rerooting
 params.refine_params = "--keep-root"
 
@@ -120,12 +123,43 @@ process EXPORT_METADATA {
     """
 }
 
+process EXPORT_METADATA_COLORS {
+    conda "${params.conda_env}"
+    publishDir "${params.outdir}/export", mode: "copy"
+    input: tuple path(newick), path(node_data), path(metadata), val(metadata_id_columns), val(metadata_columns), val(export_params), path(color_orders)
+    output: path("${newick.baseName}.json")
+
+    script:
+    """
+    python ${projectDir}/bin/assign-colors.py \
+    --color-schemes ${projectDir}/assets/color_schemes.tsv \
+    --ordering ${color_orders} \
+    --metadata ${metadata} \
+    --output colors.tsv
+
+    augur export v2 \
+    --tree ${newick} \
+    --node-data ${node_data} \
+    --output ${newick.baseName}.json \
+    ${export_params} \
+    --metadata ${metadata} \
+    --metadata-id-columns ${metadata_id_columns} \
+    --metadata-columns ${metadata_columns} \
+    --color-by-metadata ${metadata_columns} \
+    --colors colors.tsv
+    """
+}
+
 workflow {
     main:
     ch_newick = channel.fromPath(params.newick)
 
     if(params.metadata){
         ch_metadata = channel.fromPath(params.metadata)
+    }
+
+    if(params.metadata_color_order){
+        ch_color_order = channel.fromPath(params.metadata_color_order)
     }
 
     if(params.alignment){
@@ -176,14 +210,26 @@ workflow {
 
     // Metadata exists
     if(params.metadata){
-        ch_tree
-        | combine(ch_node_data)
-        | combine(ch_metadata)
-        | combine(channel.from("${params.metadata_id_columns}"))
-        | combine(channel.from("${params.metadata_annotate}"))
-        | combine(channel.from("${params.export_params}"))
-        | EXPORT_METADATA
-        | view
+        if(params.metadata_color_order){
+            ch_tree
+            | combine(ch_node_data)
+            | combine(ch_metadata)
+            | combine(channel.from("${params.metadata_id_columns}"))
+            | combine(channel.from("${params.metadata_annotate}"))
+            | combine(channel.from("${params.export_params}"))
+            | combine(ch_color_order)
+            | EXPORT_METADATA_COLORS
+            | view
+        } else {
+            ch_tree
+            | combine(ch_node_data)
+            | combine(ch_metadata)
+            | combine(channel.from("${params.metadata_id_columns}"))
+            | combine(channel.from("${params.metadata_annotate}"))
+            | combine(channel.from("${params.export_params}"))
+            | EXPORT_METADATA
+            | view
+        }
     } else {
         ch_tree
         | combine(ch_node_data)
