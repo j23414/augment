@@ -1,239 +1,90 @@
-// Minimal
-params.newick = "tree.nwk"
-params.outdir = "results"
-params.conda_env = "${HOME}/.nextstrain/runtimes/conda/env/"
-
-// Add Metadata
-params.metadata = false
-params.metadata_id_columns = "accession"
-params.metadata_annotate = "date region country host is_lab_host"
-
-// Set Colors
-params.metadata_color_order = false
-
-// Enables rerooting
-params.refine_params = "--keep-root"
-
-// Enable adding georesolution
-params.export_params = "" // "--geo-resolutions country"
-
-// Add gene annotations
-params.alignment = false
-params.reference_gb = false
-params.reference_fasta = false
-
-process REFINE {
-    conda "${params.conda_env}"
-    publishDir "${params.outdir}/refine", mode: "copy"
-    input: tuple path(newick), val(refine_params)
-    output: tuple path("${newick.baseName}_refined.nwk"), path("${newick.baseName}_branch_length.json")
-
-    script:
-    """
-    augur refine \
-    --tree ${newick} \
-    ${refine_params} \
-    --output-tree ${newick.baseName}_refined.nwk \
-    --output-node-data ${newick.baseName}_branch_length.json
-    """
-}
-
-process REFINE_METADATA {
-    conda "${params.conda_env}"
-    publishDir "${params.outdir}/refine", mode: "copy"
-    input: tuple path(newick), val(refine_params), path(metadata), path(alignment)
-    output: tuple path("${newick.baseName}_refined.nwk"), path("${newick.baseName}_branch_length.json")
-
-    script:
-    """
-    augur refine \
-    --tree ${newick} \
-    --metadata ${metadata} \
-    --alignment ${alignment} \
-    ${refine_params} \
-    --output-tree ${newick.baseName}_refined.nwk \
-    --output-node-data ${newick.baseName}_branch_length.json
-    """
-}
-
-process ANCESTRAL {
-    conda "${params.conda_env}"
-    publishDir "${params.outdir}/ancestral", mode: "copy"
-    input: tuple path(newick), path(alignment), path(reference_fasta)
-    output: path("${newick.baseName}_nt-muts.json")
-
-    script:
-    """
-    augur ancestral \
-    --tree ${newick} \
-    --alignment ${alignment} \
-    --root-sequence ${reference_fasta} \
-    --output-node-data ${newick.baseName}_nt-muts.json
-    """
-}
-
-process TRANSLATE {
-    conda "${params.conda_env}"
-    publishDir "${params.outdir}/translate", mode: "copy"
-    input: tuple path(newick), path(nt_muts_json), path(reference_gb)
-    output: path("${newick.baseName}_aa-muts.json")
-
-    script:
-    """
-    augur translate \
-    --tree ${newick} \
-    --ancestral-sequences ${nt_muts_json} \
-    --reference-sequence ${reference_gb} \
-    --output-node-data ${newick.baseName}_aa-muts.json
-    """
-}
-
-process EXPORT {
-    conda "${params.conda_env}"
-    publishDir "${params.outdir}/export", mode: "copy"
-    input: tuple path(newick), path(node_data)
-    output: path("${newick.baseName}.json")
-
-    script:
-    """
-    augur export v2 \
-    --tree ${newick} \
-    --node-data ${node_data} \
-    --output ${newick.baseName}.json
-    """
-}
-
-process EXPORT_METADATA {
-    conda "${params.conda_env}"
-    publishDir "${params.outdir}/export", mode: "copy"
-    input: tuple path(newick), path(node_data), path(metadata), val(metadata_id_columns), val(metadata_columns), val(export_params)
-    output: path("${newick.baseName}.json")
-
-    script:
-    """
-    augur export v2 \
-    --tree ${newick} \
-    --node-data ${node_data} \
-    --output ${newick.baseName}.json \
-    ${export_params} \
-    --metadata ${metadata} \
-    --metadata-id-columns ${metadata_id_columns} \
-    --metadata-columns ${metadata_columns} \
-    --color-by-metadata ${metadata_columns}
-    """
-}
+include { AUGUR_REFINE } from './modules/local/augur/refine/main'
+include { AUGUR_ANCESTRAL } from './modules/local/augur/ancestral/main'
+include { AUGUR_TRANSLATE } from './modules/local/augur/translate/main'
+include { AUGUR_EXPORT } from './modules/local/augur/export/main'
 
 process EXPORT_METADATA_COLORS {
-    conda "${params.conda_env}"
+    //conda "${params.conda_env}"
     publishDir "${params.outdir}/export", mode: "copy"
-    input: tuple path(newick), path(node_data), path(metadata), val(metadata_id_columns), val(metadata_columns), val(export_params), path(color_orders)
-    output: path("${newick.baseName}.json")
+    input: 
+    path(metadata)
+    path(color_orders)
+    path(colors_tsv)
+
+    output:
+    path("final-colors.tsv")
 
     script:
+    def colors_args = colors_tsv ?: ""
     """
-    python ${projectDir}/bin/assign-colors.py \
-    --color-schemes ${projectDir}/assets/color_schemes.tsv \
-    --ordering ${color_orders} \
-    --metadata ${metadata} \
-    --output colors.tsv
+    python ${projectDir}/bin/assign-colors.py \\
+    --color-schemes ${projectDir}/assets/color_schemes.tsv \\
+    --ordering ${color_orders} \\
+    --metadata ${metadata} \\
+    --output temp-colors.tsv
 
-    augur export v2 \
-    --tree ${newick} \
-    --node-data ${node_data} \
-    --output ${newick.baseName}.json \
-    ${export_params} \
-    --metadata ${metadata} \
-    --metadata-id-columns ${metadata_id_columns} \
-    --metadata-columns ${metadata_columns} \
-    --color-by-metadata ${metadata_columns} \
-    --colors colors.tsv
+    cat ${colors_args} temp-colors.tsv > final-colors.tsv
     """
 }
 
 workflow {
     main:
-    ch_newick = channel.fromPath(params.newick)
+    ch_newick = channel.fromPath(params.newick, checkIfExists: true)
+    | map { tree -> tuple([id: tree.baseName], tree)}
 
-    if(params.metadata){
-        ch_metadata = channel.fromPath(params.metadata)
-    }
+    ch_metadata = params.metadata ? channel.fromPath(params.metadata, checkIfExists: true) : []
+    ch_alignment = params.alignment ? channel.fromPath(params.alignment, checkIfExists: true) : []
+    
+    ch_set_colors = params.metadata_set_colors ? channel.fromPath(params.metadata_set_colors, checkIfExists: true) : []
+    
 
-    if(params.metadata_color_order){
-        ch_color_order = channel.fromPath(params.metadata_color_order)
-    }
+    AUGUR_REFINE(
+        ch_newick,
+        ch_metadata,
+        ch_alignment
+    )
 
-    if(params.alignment){
-        ch_alignment = channel.fromPath(params.alignment)
-    }
+    if ( params.reference_fasta && params.reference_gb ) {
+        ch_reference_fasta = channel.fromPath(params.reference_fasta, checkIfExists: true)
+        ch_reference_gb = channel.fromPath(params.reference_gb, checkIfExists: true)
 
-    if(params.metadata && params.alignment ) {
-      ch_newick
-      | combine(channel.from("${params.refine_params}"))
-      | combine(ch_metadata)
-      | combine(ch_alignment)
-      | REFINE_METADATA
+        AUGUR_ANCESTRAL(
+            AUGUR_REFINE.out.tree,
+            ch_alignment,
+            ch_reference_fasta
+        )
 
-      ch_tree = REFINE_METADATA.out.map{ it[0] }
-      ch_branch_length = REFINE_METADATA.out.map{ it[1] }
-
+        AUGUR_TRANSLATE(
+            AUGUR_REFINE.out.tree,
+            AUGUR_ANCESTRAL.out.node,
+            ch_reference_gb
+        )
+        ch_nt = AUGUR_ANCESTRAL.out.node
+        ch_aa = AUGUR_TRANSLATE.out.node
     } else {
-      ch_newick
-      | combine(channel.from("${params.refine_params}"))
-      | REFINE
-
-      ch_tree = REFINE.out.map{ it[0] }
-      ch_branch_length = REFINE.out.map{ it[1] }
+        ch_nt = []
+        ch_aa = []
     }
 
-
-    if(params.alignment && params.reference_gb && params.reference_fasta){
-        ch_reference_fasta = channel.fromPath(params.reference_fasta)
-        ch_reference_gb = channel.fromPath(params.reference_gb)
-
-        ch_tree 
-        | combine(ch_alignment)
-        | combine(ch_reference_fasta)
-        | ANCESTRAL
-
-        ch_tree
-        | combine(ANCESTRAL.out)
-        | combine(ch_reference_gb)
-        | TRANSLATE
-
-        ch_node_data = ch_branch_length
-        | combine(ANCESTRAL.out)
-        | combine(TRANSLATE.out)
-        | map{n -> [n]}
+    if(params.metadata_color_order) {
+        ch_color_order = channel.fromPath(params.metadata_color_order, checkIfExists: true)
+        EXPORT_METADATA_COLORS(
+            ch_metadata,
+            ch_color_order,
+            ch_set_colors
+        )
+        ch_colors = EXPORT_METADATA_COLORS.out
     } else {
-        ch_node_data = ch_branch_length
+        ch_colors = []
     }
 
-    // Metadata exists
-    if(params.metadata){
-        if(params.metadata_color_order){
-            ch_tree
-            | combine(ch_node_data)
-            | combine(ch_metadata)
-            | combine(channel.from("${params.metadata_id_columns}"))
-            | combine(channel.from("${params.metadata_annotate}"))
-            | combine(channel.from("${params.export_params}"))
-            | combine(ch_color_order)
-            | EXPORT_METADATA_COLORS
-            | view
-        } else {
-            ch_tree
-            | combine(ch_node_data)
-            | combine(ch_metadata)
-            | combine(channel.from("${params.metadata_id_columns}"))
-            | combine(channel.from("${params.metadata_annotate}"))
-            | combine(channel.from("${params.export_params}"))
-            | EXPORT_METADATA
-            | view
-        }
-    } else {
-        ch_tree
-        | combine(ch_node_data)
-        | EXPORT
-        | view
-    }
+    AUGUR_EXPORT(
+        AUGUR_REFINE.out.tree,
+        AUGUR_REFINE.out.node,
+        ch_metadata,
+        ch_colors,
+        ch_nt,
+        ch_aa
+    )
+
 }
