@@ -36,7 +36,9 @@ workflow {
     ch_alignment = params.alignment ? channel.fromPath(params.alignment, checkIfExists: true) : []
     
     ch_set_colors = params.metadata_set_colors ? channel.fromPath(params.metadata_set_colors, checkIfExists: true) : []
-    
+    ch_auspice_config_json = params.auspice_config_json ? channel.fromPath(params.auspice_config_json, checkIfExists: true) : []
+    ch_description_md = params.description_md ? channel.fromPath(params.description_md, checkIfExists: true) : []
+    ch_lat_longs_tsv = params.lat_longs_tsv ? channel.fromPath(params.lat_longs_tsv, checkIfExists: true) : []
 
     AUGUR_REFINE(
         ch_newick,
@@ -84,7 +86,10 @@ workflow {
         ch_metadata,
         ch_colors,
         ch_nt,
-        ch_aa
+        ch_aa,
+        ch_auspice_config_json,
+        ch_description_md,
+        ch_lat_longs_tsv
     )
 
 }
