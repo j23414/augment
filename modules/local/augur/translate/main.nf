@@ -13,7 +13,7 @@ process AUGUR_TRANSLATE {
     path(reference_gb)
 
     output:
-    tuple val(meta), path("${tree.baseName}_aa-muts.json"), emit: node
+    path("${tree.baseName}_aa-muts.json"), emit: node
     
     script:
     def args = task.ext.args ?: ''
