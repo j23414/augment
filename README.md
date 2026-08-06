@@ -4,6 +4,8 @@ Augment an existing analysis
 
 Tree -> Auspice website
 
+![](diagram.png)
+
 ## Install Nextstrain cli on MacOS
 
 Currently requires Nextstrain-cli installed within a conda environment
