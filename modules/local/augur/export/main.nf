@@ -3,9 +3,9 @@ process AUGUR_EXPORT {
     label 'process_medium'
 
     conda "${moduleDir}/environment.yml"
-    // container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
-    //     ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/e9/e994bf4eb3731150511a14f5706b7bdfd64df1b6d40898fff334286c027e0859/data'
-    //     : 'community.wave.seqera.io/library/htslib_samtools:1.24--d697cfb9dce007cd'}"
+    container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
+        ? 'oras://community.wave.seqera.io/library/pip_nextstrain-augur:9cbcad73b0d6c116'
+        : 'community.wave.seqera.io/library/pip_nextstrain-augur:3a4986111477eddc'}"
 
     input:
     tuple val(meta), path(tree)
