@@ -14,6 +14,7 @@ process AUGUR_EXPORT {
     path(colors_tsv)
     path(nt_data)
     path(aa_data)
+    path(trait_data)
     path(auspice_config_json)
     path(description_md)
     path(lat_longs_tsv)
@@ -32,7 +33,7 @@ process AUGUR_EXPORT {
     """
     augur export v2 \\
         --tree ${tree} \\
-        --node-data ${node_data} ${nt_data} ${aa_data} \\
+        --node-data ${node_data} ${nt_data} ${aa_data} ${trait_data} \\
         ${args} \\
         ${metadata_args} \\
         ${colors_args} \\

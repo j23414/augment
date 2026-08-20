@@ -1,6 +1,7 @@
 include { AUGUR_REFINE } from './modules/local/augur/refine/main'
 include { AUGUR_ANCESTRAL } from './modules/local/augur/ancestral/main'
 include { AUGUR_TRANSLATE } from './modules/local/augur/translate/main'
+include { AUGUR_TRAITS } from './modules/local/augur/traits/main'
 include { AUGUR_EXPORT } from './modules/local/augur/export/main'
 
 process EXPORT_METADATA_COLORS {
@@ -68,6 +69,17 @@ workflow {
         ch_aa = []
     }
 
+    if ( params.trait_columns ){
+        AUGUR_TRAITS(
+            AUGUR_REFINE.out.tree,
+            ch_metadata,
+            params.trait_columns
+        )
+        ch_traits = AUGUR_TRAITS.out.node
+    } else {
+        ch_traits = []
+    }
+
     if(params.metadata_color_order) {
         ch_color_order = channel.fromPath(params.metadata_color_order, checkIfExists: true)
         EXPORT_METADATA_COLORS(
@@ -87,6 +99,7 @@ workflow {
         ch_colors,
         ch_nt,
         ch_aa,
+        ch_traits,
         ch_auspice_config_json,
         ch_description_md,
         ch_lat_longs_tsv
