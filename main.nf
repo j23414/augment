@@ -41,6 +41,16 @@ workflow {
     ch_description_md = params.description_md ? channel.fromPath(params.description_md, checkIfExists: true) : []
     ch_lat_longs_tsv = params.lat_longs_tsv ? channel.fromPath(params.lat_longs_tsv, checkIfExists: true) : []
 
+    if( params.metadata && params.alignment ) {
+        AUGUR_FILTER(
+            ch_alignment,
+            ch_metadata
+        )
+        ch_filtered_tsv = AUGUR_FILTER.out.tsv
+    } else {
+        ch_filtered_tsv = ch_metadata
+    }
+
     AUGUR_REFINE(
         ch_newick,
         ch_metadata,
@@ -105,4 +115,10 @@ workflow {
         ch_lat_longs_tsv
     )
 
+    if(params.metadata && params.alignment) {
+        AUGUR_FREQUENCIES(
+            AUGUR_REFINE.out.tree,
+            ch_filtered_tsv
+        )
+    }
 }
