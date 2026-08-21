@@ -2,7 +2,7 @@ process AUGUR_TRANSLATE {
     tag "${meta.id}"
     label 'process_medium'
 
-    conda "${moduleDir}/environment.yml"
+    conda params.conda_env ?: "${moduleDir}/environment.yml"
     // container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
     //     ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/e9/e994bf4eb3731150511a14f5706b7bdfd64df1b6d40898fff334286c027e0859/data'
     //     : 'community.wave.seqera.io/library/htslib_samtools:1.24--d697cfb9dce007cd'}"

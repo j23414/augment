@@ -2,7 +2,7 @@ process AUGUR_REFINE {
     tag "${meta.id}"
     label 'process_medium'
 
-    conda "${moduleDir}/environment.yml"
+    conda params.conda_env ?: "${moduleDir}/environment.yml"
     container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
         ? 'oras://community.wave.seqera.io/library/pip_nextstrain-augur:9cbcad73b0d6c116'
         : 'community.wave.seqera.io/library/pip_nextstrain-augur:3a4986111477eddc'}"
