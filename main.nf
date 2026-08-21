@@ -1,8 +1,11 @@
+include { AUGUR_FILTER } from './modules/local/augur/filter/main'
+include { AUGUR_TREE } from './modules/local/augur/tree/main'
 include { AUGUR_REFINE } from './modules/local/augur/refine/main'
 include { AUGUR_ANCESTRAL } from './modules/local/augur/ancestral/main'
 include { AUGUR_TRANSLATE } from './modules/local/augur/translate/main'
 include { AUGUR_TRAITS } from './modules/local/augur/traits/main'
 include { AUGUR_EXPORT } from './modules/local/augur/export/main'
+include { AUGUR_FREQUENCIES } from './modules/local/augur/frequencies/main'
 
 process EXPORT_METADATA_COLORS {
     //conda "${params.conda_env}"
@@ -30,11 +33,25 @@ process EXPORT_METADATA_COLORS {
 
 workflow {
     main:
-    ch_newick = channel.fromPath(params.newick, checkIfExists: true)
-    | map { tree -> tuple([id: tree.baseName], tree)}
 
     ch_metadata = params.metadata ? channel.fromPath(params.metadata, checkIfExists: true) : []
     ch_alignment = params.alignment ? channel.fromPath(params.alignment, checkIfExists: true) : []
+
+    if(params.newick) {
+        ch_newick = channel.fromPath(params.newick, checkIfExists: true)
+        | map { tree -> tuple([id: tree.baseName], tree)}
+    } else {
+        if(params.alignment) {
+            ch_newick = AUGUR_TREE(
+                ch_alignment
+            )
+            ch_newick = AUGUR_TREE.out.tree
+            | map { tree -> tuple([id: tree.baseName], tree)}
+        } else {
+            error "Either a newick file or an alignment must be provided"
+        }
+
+    }
     
     ch_set_colors = params.metadata_set_colors ? channel.fromPath(params.metadata_set_colors, checkIfExists: true) : []
     ch_auspice_config_json = params.auspice_config_json ? channel.fromPath(params.auspice_config_json, checkIfExists: true) : []
