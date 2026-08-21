@@ -93,7 +93,7 @@ workflow {
     if(params.metadata_color_order) {
         ch_color_order = channel.fromPath(params.metadata_color_order, checkIfExists: true)
         EXPORT_METADATA_COLORS(
-            ch_metadata,
+            ch_filtered_tsv,
             ch_color_order,
             ch_set_colors
         )
@@ -115,10 +115,10 @@ workflow {
         ch_lat_longs_tsv
     )
 
-    if(params.metadata && params.alignment) {
-        AUGUR_FREQUENCIES(
-            AUGUR_REFINE.out.tree,
-            ch_filtered_tsv
-        )
-    }
+    // if(params.metadata && params.alignment) {
+    //     AUGUR_FREQUENCIES(
+    //         AUGUR_REFINE.out.tree,
+    //         ch_filtered_tsv
+    //     )
+    // }
 }
